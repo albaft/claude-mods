@@ -81,9 +81,20 @@ function drawAnswer($: EngineInterface, e: RenderInput, parts: AnswerSplit, file
   )
 }
 
+// The whole reply to a Run button press: the button itself already prints
+// "Opened in Finder" or "Opened in Chrome" under it in the Files box, so this
+// reply (which the app requires) is not drawn (Alba, 18 Nov 2026).
+const RUN_PRESS_REPLY = /^\s*(Opened|Done)\.?\s*$/
+
+function drawNothing($: EngineInterface, e: RenderInput) {
+  const { Box } = $.ui.resolve(e)
+  return <Box display="none" />
+}
+
 export const register: Register = on => {
   on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
     if (e.props.isSummary) return next(e)
+    if (RUN_PRESS_REPLY.test(e.props.text)) return drawNothing($, e)
     const found = splitAnswer(e.props.text)
     if (!found) return next(e)
     // The one piece the app draws: the Files section.

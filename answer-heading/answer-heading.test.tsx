@@ -51,6 +51,20 @@ test('a reply with no --- rules still gets its Files drawn by the app', async ($
   await ui.unmount()
 })
 
+test('the one-word reply to a Run button press is not drawn', async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>{'engine:' + (e.props as { text: string }).text}</Text>
+  })
+  const ui = await $.ui.mount(message('a5', 'Opened.'))
+  expect(await ui.find({ type: 'Text', text: /engine:/ })).toBeUndefined()
+  await ui.unmount()
+  // A longer reply that starts the same way is drawn as usual.
+  const other = await $.ui.mount(message('a6', 'Opened the file, but it is empty.'))
+  expect((await other.find({ type: 'Text', text: /engine:/ }))?.text).toBe('engine:Opened the file, but it is empty.')
+  await other.unmount()
+})
+
 test('with no Files section the app is asked for nothing', async ($, on) => {
   const asked: string[] = []
   on('ui.render', ($, e) => {

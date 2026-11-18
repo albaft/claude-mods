@@ -42,12 +42,14 @@ Every reply in this order, with a `---` rule between parts:
 1. Short one-line updates before each step while working (the Working button folds them).
 2. `## Answer` on its own line, then the answer.
 3. `## Files`: for each file created or changed, its path, a link, and a `bash` block with
-   `open -R "<absolute path>"` (reveal in Finder). Skip when no file changed.
+   `open -R "<absolute path>" && echo "Opened in Finder"` (reveal in Finder; the echo shows
+   under the Run button instead of "(no output)"). Skip when no file changed.
 4. `## Next`: one next action in a bold blockquote, with a time estimate.
 5. A closing `---`.
 
 Links and Run buttons work under Files only: the mod draws the Answer and Next text itself.
-When a message is only a Run button press, reply with the single word "Opened.".
+When a message is only a Run button press, reply with the single word "Opened."
+(answer-heading hides that reply, since the button already says "Opened in Finder").
 ```
 
 ## Known limits
