@@ -1,6 +1,6 @@
 {
   "name": "answer-heading",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Draws the Answer heading bigger and puts the Answer, Files and Next sections in thin boxes",
   "author": { "name": "Alba" }
 }

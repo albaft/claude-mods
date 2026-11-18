@@ -9,8 +9,20 @@ const ANSWER_HEADING = /^[ \t]*#{1,6}[ \t]*Answer[ \t]*$/m
 const NEXT_HEADING = /^\s*#{1,6}[ \t]*Next[ \t]*(\n|$)/
 
 // The --- rules between sections (Answer, Files, Next).
-const RULE = /^[ \t]*-{3,}[ \t]*$/m
 const RULES = /^[ \t]*-{3,}[ \t]*$/gm
+
+// Where the Answer section ends: the first --- rule, or a "Files" or "Next"
+// heading, whichever comes first. A reply that leaves out the rule still
+// gets Files drawn by the app, with its Run buttons (fix of 18 Nov 2026).
+const END_OF_ANSWER = /^[ \t]*(-{3,}|#{1,6}[ \t]*(Files|Next))[ \t]*$/m
+
+// A "Next" heading inside a section: Files and Next run together without a rule.
+const NEXT_LINE = /^[ \t]*#{1,6}[ \t]*Next[ \t]*$/m
+
+function splitAtNext(section: string): string[] {
+  const at = NEXT_LINE.exec(section)
+  return at && at.index > 0 ? [section.slice(0, at.index), section.slice(at.index)] : [section]
+}
 
 export type AnswerSplit = { before: string; body: string; files: string; next: string }
 
@@ -18,18 +30,19 @@ export function splitAnswer(text: string): AnswerSplit | null {
   const head = ANSWER_HEADING.exec(text)
   if (!head) return null
   const after = text.slice(head.index + head[0].length)
-  const rule = RULE.exec(after)
-  const rest = rule ? after.slice(rule.index + rule[0].length) : ''
+  const end = END_OF_ANSWER.exec(after)
+  const rest = end ? after.slice(end.index) : ''
   // The sections after the Answer; the rules themselves are dropped, since
   // each box's edge does their job.
   const sections = rest
     .split(RULES)
+    .flatMap(splitAtNext)
     .map(s => s.trim())
     .filter(s => s !== '')
   const next = sections.find(s => NEXT_HEADING.test(s)) ?? ''
   return {
     before: text.slice(0, head.index).trim(),
-    body: (rule ? after.slice(0, rule.index) : after).trim(),
+    body: (end ? after.slice(0, end.index) : after).trim(),
     // Files, and anything else that is not Next, in one piece.
     files: sections.filter(s => s !== next).join('\n\n---\n\n'),
     next,

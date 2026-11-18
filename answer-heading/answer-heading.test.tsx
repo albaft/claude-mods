@@ -34,6 +34,23 @@ test('the Answer heading is drawn as its own bigger line', async ($, on) => {
   await ui.unmount()
 })
 
+test('a reply with no --- rules still gets its Files drawn by the app', async ($, on) => {
+  const asked: string[] = []
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    asked.push((e.props as { text: string }).text)
+    return <Text>{'engine:' + (e.props as { text: string }).text}</Text>
+  })
+  const ui = await $.ui.mount(
+    message('a4', '## Answer\n\nDone.\n\n## Files\n\n[a.md](a.html)\n\n## Next\n\n> **Next:** nothing.'),
+  )
+  // The Answer box ends at the Files heading; Next is split off from Files.
+  expect((await ui.find({ type: 'Markdown', text: /Done/ }))?.text).toBe('Done.')
+  expect(asked).toEqual(['## Files\n\n[a.md](a.html)'])
+  expect((await ui.find({ type: 'Markdown', text: /Next/ }))?.text).toBe('## Next\n\n> **Next:** nothing.')
+  await ui.unmount()
+})
+
 test('with no Files section the app is asked for nothing', async ($, on) => {
   const asked: string[] = []
   on('ui.render', ($, e) => {
