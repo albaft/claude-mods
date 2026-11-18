@@ -1,0 +1,9 @@
+{
+  "name": "working-fold",
+  "version": "1.0.0",
+  "description": "Folds each finished turn's progress record (updates and grey tool lines) under one Working button at the top, closed by default",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Alba"
+  }
+}

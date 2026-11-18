@@ -1,0 +1,16 @@
+{
+  "name": "alba-mods",
+  "owner": { "name": "Alba" },
+  "plugins": [
+    {
+      "name": "working-fold",
+      "source": "./working-fold",
+      "description": "Folds each finished turn's progress record under one Working button"
+    },
+    {
+      "name": "answer-heading",
+      "source": "./answer-heading",
+      "description": "Draws the Answer heading bigger and boxes the Answer section"
+    }
+  ]
+}
