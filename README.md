@@ -59,9 +59,10 @@ When a message is only a Run button press, reply with the single word "Opened."
 
 ## Known limits
 
-- Small empty gaps stay under a closed Working button: the app keeps its own row spacing.
-- A grey line that groups several steps ("Ran 3 commands") cannot be folded: the app draws those itself.
+- A turn whose context is compacted partway through does not fold: its updates and grey lines stay visible.
 - Changing a mod during a turn can upset that turn's fold. Update between turns, then restart.
+
+Hidden rows are drawn as zero-height boxes, a technique from the "textless" mod in [HeyCubit/effortless](https://github.com/HeyCubit/effortless). That is what removes the grey group lines and the gaps under a closed Working.
 
 ## Update
 

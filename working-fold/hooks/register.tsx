@@ -126,8 +126,9 @@ function isFoldedUpdate(f: Folds, key: string): boolean {
 
 function drawEmpty($: EngineInterface, e: RenderInput) {
   const { Box } = $.ui.resolve(e)
-  // display none: take up no room, so no gap is left where the row was.
-  return <Box display="none" />
+  // Zero height, clipped: the row takes no room. "display none" still left the
+  // app's row gap (19 Nov 2026; technique from the public "textless" mod).
+  return <Box height={0} overflow="hidden" />
 }
 
 // A short, stable key for an update's text.
@@ -263,9 +264,9 @@ export const register: Register = on => {
       .filter((id): id is string => typeof id === 'string')
       .map(id => `t:${id}`)
     const role = roleOf(await read($, folds), keys)
-    // The app draws a group line itself and honours only `isExpanded` on it:
-    // unfold it into single rows, which the ToolUse hook above hides one by one.
-    if (role.kind === 'hidden') return next({ ...e, props: { ...e.props, isExpanded: true } })
+    // A folded turn's group line: draw nothing in its place, without handing it
+    // back to the app (19 Nov 2026; unfolding it was ignored by the desktop app).
+    if (role.kind === 'hidden') return drawEmpty($, e)
     if (role.kind === 'head') {
       return drawButton($, e, role.turn, role.isOpen, role.isOpen ? await next(e) : null)
     }

@@ -76,7 +76,9 @@ test('a finished turn folds under one Working button, in order', async ($, on) =
   // Closed: the button in place of the first update, the group unfolded (so
   // the app draws single rows, each hidden), the answer kept.
   expect(await first.find({ type: 'Text', text: /Checking/ })).toBeUndefined()
-  expect(expandedSeen).toBe(true)
+  // The group line draws nothing while closed: the app is not asked for it.
+  expect(expandedSeen).toBe(false)
+  expect(await rows.find({ type: 'Text', text: /ToolGroup/ })).toBeUndefined()
   expect((await final.find({ type: 'Text', text: /Done/ }))?.text).toBe(
     'engine:AssistantMessage:## Answer\n\nDone.',
   )
