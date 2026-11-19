@@ -3,7 +3,7 @@
 Two mods for the Claude desktop app (Code tab) that make long replies easier to read.
 
 - **working-fold**: when a turn ends, everything Claude did before its answer (short progress updates and the grey tool lines) folds under one **▸ Working** button at the top, closed by default. Click to open it in its real order, click again to close.
-- **answer-heading**: draws the **Answer** heading a size bigger, and puts the Answer, Files and Next sections of a reply each in a thin rounded box.
+- **answer-heading**: draws the **Answer** heading a size bigger, puts the Answer, Files and Next sections of a reply each in a thin rounded box, and makes file links under Files open in their default app, with "Show in Finder" on right-click.
 
 Each works without the other.
 
@@ -41,15 +41,20 @@ Every reply in this order, with a `---` rule between parts:
 
 1. Short one-line updates before each step while working (the Working button folds them).
 2. `## Answer` on its own line, then the answer.
-3. `## Files`: for each file created or changed, its path, a link, and a `bash` block with
-   `open -R "<absolute path>" && echo "Opened in Finder"` (reveal in Finder; the echo shows
-   under the Run button instead of "(no output)"). Skip when no file changed.
+3. `## Files`: one paragraph per file created or changed, `.md` files first, each the file
+   name as a link with a short explanation in brackets. A `.md` in bold, linked straight to
+   the `.md`: `**[notes.md](docs/notes.md)** (what changed)`. Any other file as a plain link:
+   `[chart.png](out/chart.png) (what it shows)`. Paths relative to the session's folder.
+   Skip when no file changed.
 4. `## Next`: one next action in a bold blockquote, with a time estimate.
 5. A closing `---`.
 
-Links and Run buttons work under Files only: the mod draws the Answer and Next text itself.
+A `.md` link opens formatted in Claude, and its right-click menu has the app's own
+"Show in Finder". Links to other files are drawn by answer-heading: a click opens the
+file in its default app, and a right-click on the reply offers "Show in Finder" for each.
+Run buttons and file links work under Files only: the mod draws the Answer and Next text.
 When a message is only a Run button press, reply with the single word "Opened."
-(answer-heading hides that reply, since the button already says "Opened in Finder").
+(answer-heading hides that reply).
 ```
 
 ## Known limits

@@ -49,12 +49,81 @@ export function splitAnswer(text: string): AnswerSplit | null {
   }
 }
 
+// Files (Alba, 19 Nov 2026). A line whose first link goes to a .md stays with
+// the app: a click opens it formatted in Claude's side pane, and the app's own
+// right-click "Show in Finder" shows the .md. A line whose first link goes to
+// any other file on the Mac is drawn by the mod instead: a click opens the
+// file in its default app (Chrome, Acrobat, Excel, Preview...), and a
+// right-click on the message offers "Show in Finder: <name>" for each one.
+const LINK = /\[([^\]]+)\]\(([^)\s]+)\)/
+
+export type OtherFile = { name: string; path: string }
+export type FilesSplit = { appText: string; otherText: string; others: OtherFile[] }
+
+function toPath(target: string, cwd: string): string | null {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(target)) return null // a web or other address: the app's
+  let rel = target
+  try {
+    rel = decodeURI(target)
+  } catch {
+    // Not percent-encoded as expected: use it as written.
+  }
+  if (rel.startsWith('/')) return rel
+  return cwd.replace(/\/$/, '') + '/' + rel.replace(/^\.\//, '')
+}
+
+export function splitFiles(files: string, cwd: string): FilesSplit {
+  const app: string[] = []
+  const other: string[] = []
+  const others: OtherFile[] = []
+  for (const line of files.split('\n')) {
+    const m = LINK.exec(line)
+    const path = m && !/\.md(#.*)?$/i.test(m[2] ?? '') ? toPath(m[2] ?? '', cwd) : null
+    if (!m || path === null) {
+      app.push(line)
+      continue
+    }
+    others.push({ name: m[1] ?? path, path })
+    other.push(line.replace(m[0], `[${m[1]}](file://${encodeURI(path)})`))
+  }
+  return { appText: app.join('\n').trim(), otherText: other.join('\n\n'), others }
+}
+
+// The mod-drawn files of each message, by its id, for the right-click menu.
+const filesOf = new Map<string, OtherFile[]>()
+
+function remember(id: string, others: OtherFile[]) {
+  filesOf.delete(id)
+  if (others.length > 0) filesOf.set(id, others)
+  if (filesOf.size > 300) filesOf.delete(filesOf.keys().next().value as string)
+}
+
+async function openFile($: EngineInterface, argv: string[]) {
+  try {
+    const { exitCode, stderr } = await $.process.run(argv)
+    if (exitCode !== 0) $.ui.toast(`Could not open: ${stderr.trim()}`)
+  } catch (err) {
+    $.ui.toast(`Could not open: ${String(err)}`)
+  }
+}
+
+function pathOfLink(href: string, others: OtherFile[]): string | null {
+  const hit = others.find(f => href === `file://${encodeURI(f.path)}` || href.endsWith(encodeURI(f.path)))
+  if (hit) return hit.path
+  if (!href.startsWith('file://')) return null
+  try {
+    return decodeURI(href.slice('file://'.length))
+  } catch {
+    return null
+  }
+}
+
 // Each section in a thin rounded box, in the colour of the message box.
 // The app draws only ONE piece of a reply that a mod hands back to it (a
 // second next() is silently dropped: that hid Files and Next, 18 Nov 2026).
 // So the mod draws the Answer and Next itself, with Markdown, and hands the
 // app only Files, whose file links and Run buttons need the app's own drawing.
-function drawAnswer($: EngineInterface, e: RenderInput, parts: AnswerSplit, files: unknown) {
+function drawAnswer($: EngineInterface, e: RenderInput, parts: AnswerSplit, files: unknown, split: FilesSplit) {
   const { Box, Text, Markdown } = $.ui.resolve(e)
   const box = { borderStyle: 'round', borderColor: 'promptBorder', paddingX: 'md', paddingY: 'sm' } as const
   return (
@@ -67,9 +136,19 @@ function drawAnswer($: EngineInterface, e: RenderInput, parts: AnswerSplit, file
         </Text>
         {parts.body !== '' && <Markdown text={parts.body} />}
       </Box>
-      {files !== null && (
+      {(files !== null || split.otherText !== '') && (
         <Box flexDirection="column" {...box}>
           {files as never}
+          {split.otherText !== '' && (
+            <Markdown
+              key={`files-${e.requestId}`}
+              text={split.otherText}
+              onLinkPress={link => {
+                const path = pathOfLink(link.href, split.others)
+                if (path !== null) void openFile($, ['open', path])
+              }}
+            />
+          )}
         </Box>
       )}
       {parts.next !== '' && (
@@ -81,9 +160,9 @@ function drawAnswer($: EngineInterface, e: RenderInput, parts: AnswerSplit, file
   )
 }
 
-// The whole reply to a Run button press: the button itself already prints
-// "Opened in Finder" or "Opened in Chrome" under it in the Files box, so this
-// reply (which the app requires) is not drawn (Alba, 18 Nov 2026).
+// The whole reply to a Run button press: the button already shows its own
+// output under it, so this reply (which the app requires) is not drawn
+// (Alba, 18 Nov 2026).
 const RUN_PRESS_REPLY = /^\s*(Opened|Done)\.?\s*$/
 
 function drawNothing($: EngineInterface, e: RenderInput) {
@@ -97,9 +176,29 @@ export const register: Register = on => {
     if (RUN_PRESS_REPLY.test(e.props.text)) return drawNothing($, e)
     const found = splitAnswer(e.props.text)
     if (!found) return next(e)
-    // The one piece the app draws: the Files section.
+    // Files: .md lines for the app, other files for the mod.
+    const split = splitFiles(found.files, found.files === '' ? '' : await $.session.cwd())
+    remember(e.requestId, split.others)
+    // The one piece the app draws: the Files heading and the .md lines.
     const files =
-      found.files === '' ? null : await next({ ...e, props: { ...e.props, text: found.files, isFirstOfReply: false } })
-    return drawAnswer($, e, found, files)
+      split.appText === '' ? null : await next({ ...e, props: { ...e.props, text: split.appText, isFirstOfReply: false } })
+    return drawAnswer($, e, found, files, split)
+  })
+
+  // Right-click on a message with mod-drawn files: one Show in Finder row per
+  // file (the menu says which message was clicked, not which link).
+  on('ui.render', { component: 'ContextMenu' }, ($, e, next) => {
+    const others = e.props.row ? filesOf.get(e.props.row.requestId) : undefined
+    if (!others) return next(e)
+    const { Box, Button } = $.ui.resolve(e)
+    return (
+      <Box flexDirection="column">
+        {others.map(f => (
+          <Button key={`finder-${f.path}`} onPress={() => openFile($, ['open', '-R', f.path])}>
+            Show in Finder: {f.name}
+          </Button>
+        ))}
+      </Box>
+    )
   })
 }

@@ -1,6 +1,6 @@
 {
   "name": "answer-heading",
-  "version": "1.0.4",
-  "description": "Draws the Answer heading bigger and puts the Answer, Files and Next sections in thin boxes",
+  "version": "1.1.0",
+  "description": "Draws the Answer heading bigger, boxes the Answer, Files and Next sections, and opens non-.md files in their default app",
   "author": { "name": "Alba" }
 }
